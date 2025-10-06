@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f5f5f5; }
+    .row { display: flex; gap: 24px; align-items: flex-start; }
+    .col { flex: 1; }
+    .flash { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+    .flash.error { background: #fee; color: #900; border: 1px solid #f99; }
+    .flash.success { background: #efe; color: #060; border: 1px solid #9f9; }
+    form.inline { display: inline-block; margin-right: 8px; }
+    .right { text-align: right; }
+    input[type="number"] { width: 100%; box-sizing: border-box; }
+    .small { font-size: 12px; color: #555; }
+  </style>
+  <script>
+    function sumAllocations() {
+      const inputs = document.querySelectorAll('input[name^="alloc_"]');
+      let sum = 0;
+      inputs.forEach(i => sum += Number(i.value || 0));
+      document.getElementById('alloc-sum').textContent = sum.toFixed(4);
+    }
+    window.addEventListener('DOMContentLoaded', sumAllocations);
+  </script>
+  </head>
+<body>
+  <h1>Portfolio</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <p><strong>Portfolio value:</strong> {{ '%.6f' % portfolio_value }} USD</p>
+
+  <div class="row">
+    <div class="col">
+      <h2>Stocks</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Price</th>
+            <th>Owned</th>
+            <th>Current Allocation</th>
+            <th>Update Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, stock in stocks.items() %}
+            <tr>
+              <td>{{ name }}</td>
+              <td class="right">{{ '%.6f' % stock.get_current_price() }}</td>
+              <td class="right">{{ shares.get(name, 0) }}</td>
+              <td class="right">{{ '%.6f' % current_allocation.get(name, 0) }}</td>
+              <td>
+                <form class="inline" method="post" action="{{ url_for('update_price') }}">
+                  <input type="hidden" name="symbol" value="{{ name }}" />
+                  <input type="number" step="any" min="0" name="price" placeholder="New price" required />
+                  <button type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <h2>Target Allocation</h2>
+      <form method="post" action="{{ url_for('update_allocation') }}">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Target Weight (0..1 or 0..100)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for name, _ in stocks.items() %}
+              <tr>
+                <td>{{ name }}</td>
+                <td>
+                  <input type="number" step="any" min="0" name="alloc_{{ name }}" value="{{ allocation.get(name, 0) }}" oninput="sumAllocations()" />
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="small">Sum: <span id="alloc-sum">0</span> (will auto-normalize if given in 0..100)</p>
+        <button type="submit">Save Allocation</button>
+      </form>
+    </div>
+  </div>
+
+  <h2>Rebalance</h2>
+  <form class="inline" method="post" action="{{ url_for('calculate_rebalance') }}">
+    <button type="submit">Calculate Rebalance Plan</button>
+  </form>
+  <form class="inline" method="post" action="{{ url_for('apply_rebalance') }}">
+    <button type="submit">Apply Rebalance Plan</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Shares delta (+ buy / - sell)</th>
+        <th>Value impact (USD)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for name, delta in rebalance_plan.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          <td class="right">{{ '%.6f' % delta }}</td>
+          <td class="right">{{ '%.6f' % (delta * stocks[name].get_current_price()) }}</td>
+        </tr>
+      {% endfor %}
+      {% if not rebalance_plan %}
+        <tr><td colspan="3" class="small">No plan calculated yet.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+</body>
+</html>
+
+
