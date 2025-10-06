@@ -8,7 +8,7 @@
 The problem consists of a portfolio with a collection of stocks currently owned and a collection of allocated stocks that contains the distribution of stocks that the portfolio is aiming for.
 To do the rebalance, first, I will create a rebalance plan method that will return the Stock that needs to be sold and bought, and the specific quantity of shares, so that the user can know how the balance is. Then I need to add another method to apply the rebalance plan to the portfolio.
 
-LLMs conversations are located in `conversations.md`
+LLMs conversations are located in `conversations.md`.
 
 
 ## Assumptions:
